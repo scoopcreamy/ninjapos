@@ -1,0 +1,11 @@
+{
+    "name": "ninjapos-monorepo",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "vercel-build": "cd pos-ninja && npm install && npm run build"
+    },
+    "workspaces": [
+        "pos-ninja"
+    ]
+}
