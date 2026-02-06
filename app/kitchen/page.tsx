@@ -38,8 +38,11 @@ export default function KitchenPage() {
 
   const fetchOrders = async () => {
     try {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
       const res = await pb.collection("orders").getFullList<Order>({
+        filter: `status != "completed" || (status = "completed" && created >= "${oneHourAgo}")`,
         expand: 'order_items(order_id).product_id',
+        sort: '-created',
         requestKey: null,
       });
       setOrders(res);
@@ -56,12 +59,22 @@ export default function KitchenPage() {
     // Subscribe to realtime changes
     pb.collection("orders").subscribe("*", (e) => {
       console.log("Realtime event:", e);
-      // Optimize: just refetch specific order or all. Refetch all is safest for KDS state.
+      if (e.action === "create") {
+        // Play sound alert for new orders
+        const audio = new Audio("/notify.mp3");
+        audio.play().catch(err => console.log("Sound play failed:", err));
+      }
       fetchOrders();
     });
 
+    const timer = setInterval(() => {
+      // Force re-render every minute to update stay-duration timers
+      setOrders(current => [...current]);
+    }, 60000);
+
     return () => {
       pb.collection("orders").unsubscribe("*");
+      clearInterval(timer);
     };
   }, []);
 
@@ -111,9 +124,15 @@ export default function KitchenPage() {
                     {order.status}
                   </Badge>
                 </div>
-                <div className="flex items-center text-xs text-muted-foreground mt-2">
-                  <Clock className="w-3 h-3 mr-1" />
-                  {new Date(order.created).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <div className="flex flex-col gap-1 mt-2">
+                  <div className="flex items-center text-xs text-muted-foreground">
+                    <Clock className="w-3 h-3 mr-1" />
+                    Ordered: {new Date(order.created).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                  <div className="flex items-center text-xs font-bold text-orange-600">
+                    <Bell className="w-3 h-3 mr-1" />
+                    Wait time: {Math.floor((new Date().getTime() - new Date(order.created).getTime()) / 60000)} mins
+                  </div>
                 </div>
               </CardHeader>
 
@@ -135,20 +154,25 @@ export default function KitchenPage() {
 
               <div className="p-4 bg-gray-50 dark:bg-zinc-800 border-t mt-auto gap-2 grid grid-cols-2">
                 {order.status === 'new' && (
-                  <Button className="col-span-2 w-full h-12 text-lg" onClick={() => updateStatus(order.id, 'cooking')}>
-                    Start Cooking
+                  <Button className="col-span-2 w-full h-14 text-xl font-black bg-blue-600 hover:bg-blue-700 text-white" onClick={() => updateStatus(order.id, 'cooking')}>
+                    START COOKING
                   </Button>
                 )}
                 {order.status === 'cooking' && (
-                  <Button className="col-span-2 w-full h-12 text-lg bg-green-600 hover:bg-green-700 text-white" onClick={() => updateStatus(order.id, 'ready')}>
-                    Mark Ready
+                  <Button className="col-span-2 w-full h-14 text-xl font-black bg-green-600 hover:bg-green-700 text-white" onClick={() => updateStatus(order.id, 'ready')}>
+                    MARK READY
                   </Button>
                 )}
                 {order.status === 'ready' && (
-                  <Button variant="outline" className="col-span-2 w-full h-12 text-lg" onClick={() => updateStatus(order.id, 'completed')}>
-                    <CheckCircle2 className="mr-2 h-5 w-5" />
-                    Complete
+                  <Button variant="outline" className="col-span-2 w-full h-14 text-xl font-black border-2 border-green-600 text-green-600 hover:bg-green-50" onClick={() => updateStatus(order.id, 'completed')}>
+                    <CheckCircle2 className="mr-2 h-6 w-6" />
+                    DONE (SERVED)
                   </Button>
+                )}
+                {order.status === 'completed' && (
+                  <div className="col-span-2 text-center py-2 text-green-600 font-bold flex items-center justify-center gap-2">
+                    <CheckCircle2 className="h-5 w-5" /> Served
+                  </div>
                 )}
               </div>
             </Card>
