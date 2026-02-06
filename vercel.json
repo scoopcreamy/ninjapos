@@ -1,4 +1,6 @@
 {
+    "buildCommand": "npm run build --prefix pos-ninja",
+    "installCommand": "npm install --prefix pos-ninja",
     "outputDirectory": "pos-ninja/.next",
     "framework": "nextjs"
 }

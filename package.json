@@ -3,13 +3,15 @@
     "version": "1.0.0",
     "private": true,
     "scripts": {
-        "build": "cd pos-ninja && npm run build",
-        "vercel-build": "cd pos-ninja && npm install && npm run build"
+        "build": "npm run build --prefix pos-ninja",
+        "install": "npm install --prefix pos-ninja"
     },
     "workspaces": [
         "pos-ninja"
     ],
     "dependencies": {
-        "next": "16.1.6"
+        "next": "16.1.6",
+        "react": "19.2.3",
+        "react-dom": "19.2.3"
     }
 }
