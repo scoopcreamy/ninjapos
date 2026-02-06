@@ -12,7 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { LayoutDashboard, TrendingUp, ArrowDownCircle, ArrowUpCircle, Wallet, ClipboardList, Printer, X } from "lucide-react";
+import { LayoutDashboard, TrendingUp, ArrowDownCircle, ArrowUpCircle, Wallet, ClipboardList, Printer, X, Bell, History } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -42,6 +42,7 @@ export default function ReportsPage() {
   const [expensesTotal, setExpensesTotal] = useState(0);
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [shifts, setShifts] = useState<any[]>([]);
 
   // Closing Sale State
   const [closingOpen, setClosingOpen] = useState(false);
@@ -53,6 +54,7 @@ export default function ReportsPage() {
     card: 0,
     count: 0
   });
+  const [closing, setClosing] = useState(false);
 
   // Month Filter State (Default: Current Month YYYY-MM)
   const [monthFilter, setMonthFilter] = useState(() => new Date().toISOString().slice(0, 7));
@@ -196,6 +198,46 @@ export default function ReportsPage() {
     setChartData(data);
     setLoading(false);
     setDebugLog(log);
+
+    // Fetch Shift History
+    try {
+      const shiftRes = await pb.collection("shifts").getFullList({
+        sort: "-closed_at",
+        expand: "closed_by"
+      });
+      setShifts(shiftRes);
+    } catch (e) {
+      console.error("Fetch Shifts Error:", e);
+    }
+  };
+
+  const closeShift = async () => {
+    if (!confirm("Are you sure you want to CLOSE the shift for today? This will record all current sales as a final shift report.")) return;
+
+    setClosing(true);
+    try {
+      await pb.collection("shifts").create({
+        opened_by: pb.authStore.record?.id,
+        closed_by: pb.authStore.record?.id,
+        opened_at: new Date().toISOString().split('T')[0] + " 00:00:00.000Z", // Simplified for demo
+        closed_at: new Date().toISOString(),
+        starting_cash: 0, // Placeholder
+        ending_cash: dailyStats.cash,
+        expected_cash: dailyStats.cash,
+        total_sales: dailyStats.total,
+        total_expenses: 0, // Should be calculated
+        sales_breakdown: dailyStats,
+        status: "closed",
+        notes: "Daily close from dashboard"
+      });
+      alert("Shift closed successfully and Z-Report generated!");
+      setClosingOpen(false);
+    } catch (e: any) {
+      console.error("Close Shift Error:", e);
+      alert("Error closing shift: " + e.message);
+    } finally {
+      setClosing(false);
+    }
   };
 
   useEffect(() => {
@@ -341,9 +383,12 @@ export default function ReportsPage() {
                 </div>
               </div>
 
-              <div className="flex gap-3">
-                <Button className="w-full font-bold" onClick={() => window.print()}>
-                  <Printer className="mr-2 h-4 w-4" /> Print Report
+              <div className="flex flex-col gap-3">
+                <Button className="w-full font-bold h-12 text-lg" disabled={closing} onClick={closeShift}>
+                  {closing ? "Closing Shift..." : "Finalize & Close Shift"}
+                </Button>
+                <Button variant="outline" className="w-full font-bold" onClick={() => window.print()}>
+                  <Printer className="mr-2 h-4 w-4" /> Print Current Summary
                 </Button>
               </div>
             </DialogContent>
@@ -423,6 +468,54 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Shift History Section */}
+      <Card className="shadow-sm mt-8">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Shift History</CardTitle>
+            <CardDescription>Recent Z-Reports and shift closings</CardDescription>
+          </div>
+          <History className="h-5 w-5 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {shifts.length === 0 ? (
+              <div className="text-center py-10 text-muted-foreground italic">No shift records found. Close a shift to see it here.</div>
+            ) : (
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 dark:bg-zinc-900 border-b">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-bold uppercase tracking-wider text-[10px]">Closed At</th>
+                      <th className="px-4 py-3 text-left font-bold uppercase tracking-wider text-[10px]">Staff</th>
+                      <th className="px-4 py-3 text-right font-bold uppercase tracking-wider text-[10px]">Total Sales</th>
+                      <th className="px-4 py-3 text-right font-bold uppercase tracking-wider text-[10px]">Cash</th>
+                      <th className="px-4 py-3 text-center font-bold uppercase tracking-wider text-[10px]">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {shifts.map((s) => (
+                      <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-zinc-900/50">
+                        <td className="px-4 py-3 font-mono">{new Date(s.closed_at).toLocaleString()}</td>
+                        <td className="px-4 py-3 font-medium">{s.expand?.closed_by?.name || "System"}</td>
+                        <td className="px-4 py-3 text-right font-bold">RM {s.total_sales.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right">RM {s.ending_cash.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-center">
+                          <Button variant="ghost" size="sm" onClick={() => {
+                            // Simple re-print or view logic
+                            alert(`View Report for Shift ${s.id}\nTotal: RM ${s.total_sales}`);
+                          }}>Detail</Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
