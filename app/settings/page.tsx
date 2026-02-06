@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import pb from "@/lib/pocketbase";
 import { Button } from "@/components/ui/button";
@@ -57,6 +57,19 @@ interface Product {
 }
 
 export default function SettingsPage() {
+    return (
+        <Suspense fallback={
+            <div className="h-full flex flex-col items-center justify-center text-muted-foreground bg-gray-50/50 dark:bg-zinc-950/50">
+                <Loader2 className="animate-spin h-8 w-8 mb-4 text-primary" />
+                <p>Loading settings...</p>
+            </div>
+        }>
+            <SettingsContent />
+        </Suspense>
+    );
+}
+
+function SettingsContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const activeTab = searchParams.get("tab") || "branches";

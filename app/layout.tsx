@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 import { MainSidebar } from "@/components/MainSidebar";
+import { Suspense } from "react";
+import { AuthGuard } from "@/components/AuthGuard";
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -14,8 +16,6 @@ export const metadata: Metadata = {
   description: "Modern AI POS System",
 };
 
-import { AuthGuard } from "@/components/AuthGuard";
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -27,7 +27,9 @@ export default function RootLayout({
         className={`${poppins.variable} antialiased flex h-screen overflow-hidden bg-gray-100 dark:bg-zinc-950 font-sans`}
       >
         <AuthGuard>
-          <MainSidebar />
+          <Suspense fallback={null}>
+            <MainSidebar />
+          </Suspense>
           <main className="flex-1 h-full overflow-hidden relative">
             {children}
           </main>
