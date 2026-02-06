@@ -1,7 +1,4 @@
 {
-    "buildCommand": "cd pos-ninja && npm run build",
     "outputDirectory": "pos-ninja/.next",
-    "installCommand": "cd pos-ninja && npm install",
-    "devCommand": "cd pos-ninja && npm run dev",
     "framework": "nextjs"
 }
