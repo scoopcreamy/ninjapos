@@ -19,7 +19,10 @@ RUN wget https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSIO
     && chmod +x pocketbase
 
 # Create pb_data directory for persistent storage
-RUN mkdir -p /app/pb_data
+RUN mkdir -p /app/pb_data /app/pb_migrations
+
+# Copy migrations from host
+COPY pb_migrations /app/pb_migrations
 
 # Expose PocketBase default port
 EXPOSE 8080
