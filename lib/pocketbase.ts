@@ -8,6 +8,7 @@ if (url && !url.startsWith('http')) {
     url = `https://${url}`;
 }
 
+console.log("PocketBase URL:", url);
 const pb = new PocketBase(url);
 
 export default pb;
